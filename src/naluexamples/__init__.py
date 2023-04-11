@@ -1,0 +1,1 @@
+from naluexamples._version import __version__
