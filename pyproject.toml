@@ -12,17 +12,6 @@ dynamic = ["version"]
 requires-python = ">=3.9"
 dependencies = [
   "naludaq>=0.17.2",
-  "naluconfigs>=10.3",
-  "ftd3xx>=1.0",
-  "naludaq_rs>=0.1.5",
-  "deprecation",
-  "ftd2xx>=1.1.2",
-  "h5py",
-  "numpy<1.24",
-  "pyserial==3.4",
-  "pyyaml>=5.1.1",
-  "scikit-learn==1.1.3",
-  "requests",
 ]
 classifiers = [
   "Development Status :: 4 - Beta",
