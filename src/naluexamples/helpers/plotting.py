@@ -14,7 +14,7 @@ def get_color_mapping(name: str = "ocean"):
     return cmap
 
 
-def simple_event_plot(event: dict, title: str=None, legend: bool=True, cmap = None):
+def simple_event_plot(event: dict, title: "str|None" = None, xlabel: "str|None" = None, ylabel: "str|None" = None, legend: bool=True, cmap = None):
     """Plot a single event in a simple line graph.
 
     Args:
@@ -24,8 +24,8 @@ def simple_event_plot(event: dict, title: str=None, legend: bool=True, cmap = No
         cmap: the color map to use for the lines.
     """
     plt.title(title or f"Event {event['event_num']}")
-    plt.xlabel("Sample Number")
-    plt.ylabel("ADC Value (counts)")
+    plt.xlabel(xlabel or "Sample Number")
+    plt.ylabel(ylabel or "ADC Value (counts)")
     for channel, data in enumerate(event["data"]):
         extra_kwargs = {}
         if cmap:
