@@ -1,6 +1,7 @@
 import matplotlib
 import matplotlib.pyplot as plt
 
+
 def set_plot_style(font_size: int = 18, font_family: str = "monospace"):
     """Sets the matplotlib font size and family
     """
