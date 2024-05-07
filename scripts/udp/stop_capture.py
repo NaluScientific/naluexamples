@@ -1,6 +1,7 @@
 import argparse
 import re
 import logging
+import socket
 import sys
 
 from naluconfigs import get_available_models
@@ -10,17 +11,24 @@ from naludaq.controllers import get_board_controller
 def main():
     """Starts data capture for a board"""
     args = parse_args(sys.argv[1:])
-
-    if not _is_ipstr_valid(args.board_ip):
-        raise ValueError("Invalid format: Board IP")
-    if not _is_ipstr_valid(args.host_ip):
-        raise ValueError("Invalid format: Host IP")
     if args.debug:
         setup_logger()
 
     BOARD_MODEL = args.model
+    
+    if not _is_ipstr_valid(args.board_ip):
+        raise ValueError("Invalid format: Board IP")
     BOARD_IP = _parse_ip_str(args.board_ip)
-    HOST_IP = _parse_ip_str(args.host_ip)
+
+    if args.host_ip is None:
+        local_hostname = socket.gethostname()
+        ip_addresses = socket.gethostbyname_ex(local_hostname)[2]
+        filtered_ips = [ip for ip in ip_addresses if not ip.startswith("127.")]
+        HOST_IP = (filtered_ips[0], 4660)
+    else:
+        if not _is_ipstr_valid(args.host_ip):
+            raise ValueError("Invalid format: Host IP")
+        HOST_IP = _parse_ip_str(args.host_ip)
 
     BOARD = Board(BOARD_MODEL)
     BOARD.get_udp_connection(BOARD_IP, HOST_IP)
@@ -72,7 +80,7 @@ def parse_args(argv):
         "-host",
         type=str,
         required=True,
-        help="IP of the host computer running the script in the format ADDRESS:PORT",
+        help="IP of the host computer running the script in the format ADDRESS:PORT, Defaults to first local ip found with port 4660",
     )
     parser.add_argument(
         "--debug",
