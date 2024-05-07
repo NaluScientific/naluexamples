@@ -44,14 +44,7 @@ def main():
     BC.start_readout(
         trig=args.trigger_mode,
         lb=args.lookback_mode,
-        singleEv=True,
     )
-    import time
-    time.sleep(0.5)
-    BC.toggle_trigger()
-    time.sleep(1)
-    data = BOARD.connection.read_all()
-    print(len(data))
     BOARD.disconnect()
 
 def setup_logger(level=logging.DEBUG):
