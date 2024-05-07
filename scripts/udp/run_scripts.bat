@@ -5,6 +5,6 @@ set "READ_WINDOW=16 16 16"
 set "TRIGGER_MODE=ext"
 set "LOOKBACK_MODE=trig"
 
-python init_board.py -m %MODEL% -b %BOARD_IP% 
+python init_board.py -m %MODEL% -b %BOARD_IP% -host %HOST_IP%
 python start_capture.py -m %MODEL% -b %BOARD_IP% -host %HOST_IP% --read_window %READ_WINDOW% -t %TRIGGER_MODE% -l %LOOKBACK_MODE%
 python stop_capture.py -m %MODEL% -b %BOARD_IP% -host %HOST_IP%
