@@ -71,7 +71,7 @@ def parse_args(argv):
         "-host",
         type=str,
         required=False,
-        help="IP of the host computer running the script in the format ADDRESS:PORT, Defaults to first local ip found with port 4660",
+        help="IP of the host computer running the script in the format ADDRESS:PORT, Defaults 127.0.0.1:4660",
     )
     parser.add_argument(
         "--debug",
