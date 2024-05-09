@@ -1,7 +1,7 @@
 import argparse
-import re
 import logging
 import sys
+import ipaddress
 
 from naluconfigs import get_available_models
 from naludaq.board import Board, startup_board
@@ -87,10 +87,12 @@ def _parse_ip_str(ip: str) -> tuple:
 
 
 def _is_ipstr_valid(ip: str):
-    ip_port_regex = r"^((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.){3}(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d):([1-9]\d{0,3}|[1-5]\d{4}|6[0-4]\d{3}|65[0-4]\d{2}|655[0-2]\d|6553[0-5])$"
-    if re.match(ip_port_regex, ip):
-        return True
-    return False
+    """Will check if the IP string is valid, will not check if 'ip' is a string."""
+    try:
+        ipaddress.ip_address(ip)
+    except (ValueError, SyntaxError):
+        return False
+    return True
 
 
 if __name__ == "__main__":
