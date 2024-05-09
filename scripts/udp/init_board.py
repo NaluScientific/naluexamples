@@ -1,7 +1,6 @@
 import argparse
 import re
 import logging
-import socket
 import sys
 
 from naluconfigs import get_available_models
@@ -22,10 +21,7 @@ def main():
     board_ip = _parse_ip_str(args.board_ip)
 
     if args.host_ip is None:
-        local_hostname = socket.gethostname()
-        ip_addresses = socket.gethostbyname_ex(local_hostname)[2]
-        filtered_ips = [ip for ip in ip_addresses if not ip.startswith("127.")]
-        host_ip = (filtered_ips[0], 4660)
+        host_ip = ("127.0.0.1", 4660)
     else:
         if not _is_ipstr_valid(args.host_ip):
             raise ValueError("Invalid format: Host IP")
