@@ -3,10 +3,11 @@ import argparse
 import logging
 import sys
 
-from helpers import _is_ipstr_valid, _parse_ip_str
+from helpers import _is_ip_valid, _is_port_valid
 from naluconfigs import get_available_models
 from naludaq.board import Board
-from naludaq.controllers import get_board_controller, get_readout_controller
+from naludaq.controllers import get_board_controller, get_connection_controller, get_dac_controller, get_readout_controller, get_trigger_controller
+
 
 
 def main():
@@ -17,21 +18,33 @@ def main():
 
     board_model = args.model
 
-    if not _is_ipstr_valid(args.board_ip):
+    if not _is_ip_valid(args.board_ip) or not _is_port_valid(args.board_port):
         raise ValueError("Invalid format: Board IP")
-    board_ip = _parse_ip_str(args.board_ip)
+    board_ip = (args.board_ip, int(args.board_port))
 
-    if args.host_ip is None:
-        host_ip = ("127.0.0.1", 4660)
-    else:
-        if not _is_ipstr_valid(args.host_ip):
-            raise ValueError("Invalid format: Host IP")
-        host_ip = _parse_ip_str(args.host_ip)
+    if not _is_ip_valid(args.host_ip) or not _is_port_valid(args.board_port):
+        raise ValueError("Invalid format: Host IP")
+    host_ip = (args.host_ip, int(args.host_port))
+
+    if not _is_ip_valid(args.target_ip) or not _is_port_valid(args.target_port):
+        raise ValueError("Invalid format: Target IP")
+    target_ip = (args.target_ip, int(args.target_port))
+
+    if args.trigger_mode == "self" and not args.trigger_values:
+        raise ValueError("Trigger mode is self, please provide trigger values for channels")
 
     atof = Board(board_model)
+    atof.trigger_values = args.trigger_values
     atof.get_udp_connection(board_ip, host_ip)
-
     get_readout_controller(atof).set_read_window(*args.read_window)
+
+    for chan, val in enumerate(args.dac_values):
+        get_dac_controller(atof).set_single_dac(chan, val)
+    get_trigger_controller(atof).write_triggers()
+
+    # Set receiver address to the target computer's address
+    atof.connection_info["receiver_addr"] = target_ip
+    get_connection_controller(atof)._configure_ethernet()
 
     get_board_controller(atof).start_readout(
         trig=args.trigger_mode,
@@ -74,21 +87,56 @@ def parse_args(argv):
         "-b",
         type=str,
         required=True,
-        help="Board IP in the format ADDRESS:PORT",
+        help="Board IP in the IPv4 format",
+    )
+    parser.add_argument(
+        "--board_port",
+        "-bp",
+        type=str,
+        required=True,
+        help="Board port",
     )
     parser.add_argument(
         "--host_ip",
         "-host",
         type=str,
         required=True,
-        help="IP of the host computer running the script in the format ADDRESS:PORT, Defaults to first local ip found with port 4660",
+        help="IP of the host computer running the script in the IPv4 format",
+    )
+    parser.add_argument(
+        "--host_port",
+        "-hp",
+        type=str,
+        required=True,
+        help="Host port",
+    )
+    parser.add_argument(
+        "--target_ip",
+        "-t",
+        type=str,
+        required=True,
+        help="IP of the target computer receiving the data in IPv4 format",
+    )
+    parser.add_argument(
+        "--target_port",
+        "-tp",
+        type=str,
+        required=True,
+        help="Target port",
     )
     parser.add_argument(
         "--debug",
         "-d",
         action="store_true",
     )
-
+    parser.add_argument(
+        "--dac_values",
+        "-dac",
+        type=int,
+        required=False,
+        help="DAC values to set the board's channels to",
+        nargs='+',
+    )
     parser.add_argument(
         "--readout_window",
         nargs=3,
@@ -104,7 +152,14 @@ def parse_args(argv):
         help="ext: External trigger, using the trig_in on the board or software commands\nimm: Immediate trigger will trigger automatically without signal\nself: Self trigger will trigger on analog signals.\n",
         choices=["imm", "ext", "self"],
     )
-
+    parser.add_argument(
+        "--trigger_values",
+        "-tv",
+        type=int,
+        required=False,
+        help="Trigger values to set per channel in the format: val1 val2 val3 ...",
+        nargs='+',
+    )
     parser.add_argument(
         "--lookback_mode",
         "-l",
@@ -115,7 +170,6 @@ def parse_args(argv):
     )
 
     return parser.parse_args(argv)
-
 
 if __name__ == "__main__":
     main()

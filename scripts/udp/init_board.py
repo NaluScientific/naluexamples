@@ -3,7 +3,7 @@ import argparse
 import logging
 import sys
 
-from helpers import _is_ipstr_valid, _parse_ip_str
+from helpers import _is_ip_valid, _is_port_valid
 from naluconfigs import get_available_models
 from naludaq.board import Board, startup_board
 from naludaq.controllers import get_board_controller
@@ -17,22 +17,24 @@ def main():
 
     board_model = args.model
 
-    if not _is_ipstr_valid(args.board_ip):
+    if not _is_ip_valid(args.board_ip) or not _is_port_valid(args.board_port):
         raise ValueError("Invalid format: Board IP")
-    board_ip = _parse_ip_str(args.board_ip)
+    board_ip = (args.board_ip, int(args.board_port))
 
-    if args.host_ip is None:
-        host_ip = ("127.0.0.1", 4660)
-    else:
-        if not _is_ipstr_valid(args.host_ip):
-            raise ValueError("Invalid format: Host IP")
-        host_ip = _parse_ip_str(args.host_ip)
+    if not _is_ip_valid(args.host_ip) or not _is_port_valid(args.board_port):
+        raise ValueError("Invalid format: Host IP")
+    host_ip = (args.host_ip, int(args.host_port))
 
     atof = Board(board_model)
     atof.get_udp_connection(board_ip, host_ip)
 
     get_board_controller(atof).reset_board()
-
+    
+    if args.clock_file:
+        atof.load_clockfile(args.clock_file)
+    if args.config_file:
+        atof.load_registers(args.config_file)
+        
     startup_board(atof)
     atof.disconnect()
 
@@ -65,14 +67,35 @@ def parse_args(argv):
         "-b",
         type=str,
         required=True,
-        help="Board IP in the format ADDRESS:PORT",
+        help="Board IP in the IPv4 format",
+    )
+    parser.add_argument(
+        "--board_port",
+        "-bp",
+        type=str,
+        required=True,
+        help="Board port",
     )
     parser.add_argument(
         "--host_ip",
         "-host",
         type=str,
-        required=False,
+        required=True,
         help="IP of the host computer running the script in the format ADDRESS:PORT, Defaults 127.0.0.1:4660",
+    )
+    parser.add_argument(
+        "--config_file",
+        "-cfg",
+        type=str,
+        required=False,
+        help="Config file to set the board's registers to",
+    )
+    parser.add_argument(
+        "--clock_file",
+        "-clk",
+        type=str,
+        required=False,
+        help="Clock file to program the board's clock",
     )
     parser.add_argument(
         "--debug",
