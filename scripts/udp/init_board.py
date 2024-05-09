@@ -49,12 +49,6 @@ def setup_logger(level=logging.DEBUG):
     )
     logger.addHandler(handler)
     logger.setLevel(level)
-    suppress = [
-        "naludaq.UART",
-        "naludaq.FTDI",
-    ]
-    for name in suppress:
-        logging.getLogger(name).setLevel(logging.CRITICAL)
     return logger
 
 
