@@ -81,7 +81,14 @@ def parse_args(argv):
         "-host",
         type=str,
         required=True,
-        help="IP of the host computer running the script in the format ADDRESS:PORT, Defaults 127.0.0.1:4660",
+        help="IP of the host computer running the script in the IPv4 format",
+    )
+    parser.add_argument(
+        "--host_port",
+        "-hp",
+        type=str,
+        required=True,
+        help="Host port",
     )
     parser.add_argument(
         "--config_file",

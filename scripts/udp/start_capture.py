@@ -34,13 +34,15 @@ def main():
         raise ValueError("Trigger mode is self, please provide trigger values for channels")
 
     atof = Board(board_model)
-    atof.trigger_values = args.trigger_values
     atof.get_udp_connection(board_ip, host_ip)
-    get_readout_controller(atof).set_read_window(*args.read_window)
 
-    for chan, val in enumerate(args.dac_values):
-        get_dac_controller(atof).set_single_dac(chan, val)
-    get_trigger_controller(atof).write_triggers()
+    if args.trigger_values:
+        atof.trigger_values = args.trigger_values
+        get_trigger_controller(atof).write_triggers()
+    if args.dac_values:
+        for chan, val in enumerate(args.dac_values):
+            get_dac_controller(atof).set_single_dac(chan, val)
+    get_readout_controller(atof).set_read_window(*args.readout_window)
 
     # Set receiver address to the target computer's address
     atof.connection_info["receiver_addr"] = target_ip
@@ -146,7 +148,7 @@ def parse_args(argv):
 
     parser.add_argument(
         "--trigger_mode",
-        "-t",
+        "-trig",
         type=str,
         required=True,
         help="ext: External trigger, using the trig_in on the board or software commands\nimm: Immediate trigger will trigger automatically without signal\nself: Self trigger will trigger on analog signals.\n",
@@ -154,7 +156,7 @@ def parse_args(argv):
     )
     parser.add_argument(
         "--trigger_values",
-        "-tv",
+        "-trigval",
         type=int,
         required=False,
         help="Trigger values to set per channel in the format: val1 val2 val3 ...",
