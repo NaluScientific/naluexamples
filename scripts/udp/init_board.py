@@ -1,8 +1,8 @@
 import argparse
 import logging
 import sys
-import ipaddress
 
+from helpers import _is_ipstr_valid, _parse_ip_str
 from naluconfigs import get_available_models
 from naludaq.board import Board, startup_board
 from naludaq.controllers import get_board_controller
@@ -79,20 +79,6 @@ def parse_args(argv):
         action="store_true",
     )
     return parser.parse_args(argv)
-
-
-def _parse_ip_str(ip: str) -> tuple:
-    splitted = ip.split(":")
-    return (splitted[0], int(splitted[1]))
-
-
-def _is_ipstr_valid(ip: str):
-    """Will check if the IP string is valid, will not check if 'ip' is a string."""
-    try:
-        ipaddress.ip_address(ip)
-    except (ValueError, SyntaxError):
-        return False
-    return True
 
 
 if __name__ == "__main__":
