@@ -141,6 +141,7 @@ def parse_args(argv):
     )
     parser.add_argument(
         "--readout_window",
+        "-r",
         nargs=3,
         type=int,
         help="Read Window in the format: num windows, lookback, write after trigger",

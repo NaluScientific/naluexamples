@@ -1,0 +1,3 @@
+naluacq>=0.4.4
+naluconfigs>=13.8.2
+naludaq>=0.26.5
