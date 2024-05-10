@@ -3,8 +3,9 @@ name = "naluexamples"
 authors = [
   # Current authors
   { name="Marcus Luck", email="marcus@naluscientific.com" },
-  { name="Mitchell Matsumori-Kelly", email="mitchell@naluscientific.com" },
   { name="Alvin Yang", email="alvin@naluscientific.com" },
+  # Previous authors
+  { name="Mitchell Matsumori-Kelly", email="mitchell@naluscientific.com" },
 ]
 description = "Example code for using Nalu Scientific's software"
 readme = "README.md"
