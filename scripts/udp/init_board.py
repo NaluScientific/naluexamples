@@ -25,18 +25,18 @@ def main():
         raise ValueError("Invalid format: Host IP")
     host_ip = (args.host_ip, int(args.host_port))
 
-    atof = Board(board_model)
-    atof.get_udp_connection(board_ip, host_ip)
+    brd = Board(board_model)
+    brd.get_udp_connection(board_ip, host_ip)
 
-    get_board_controller(atof).reset_board()
-    
+    get_board_controller(brd).reset_board()
+
     if args.clock_file:
-        atof.load_clockfile(args.clock_file)
+        brd.load_clockfile(args.clock_file)
     if args.config_file:
-        atof.load_registers(args.config_file)
-        
-    startup_board(atof)
-    atof.disconnect()
+        brd.load_registers(args.config_file)
+
+    startup_board(brd)
+    brd.disconnect()
 
 
 def setup_logger(level=logging.DEBUG):

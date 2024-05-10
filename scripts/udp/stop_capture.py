@@ -25,12 +25,12 @@ def main():
         raise ValueError("Invalid format: Host IP")
     host_ip = (args.host_ip, int(args.host_port))
 
-    atof = Board(board_model)
-    atof.get_udp_connection(board_ip, host_ip)
+    brd = Board(board_model)
+    brd.get_udp_connection(board_ip, host_ip)
 
-    get_board_controller(atof).stop_readout()
+    get_board_controller(brd).stop_readout()
 
-    atof.disconnect()
+    brd.disconnect()
 
 
 def setup_logger(level=logging.DEBUG):
@@ -53,7 +53,9 @@ def setup_logger(level=logging.DEBUG):
 
 def parse_args(argv):
     """Parse command line arguments"""
-    parser = argparse.ArgumentParser(description="Stops the board capture, and sets the return address to the host's address")
+    parser = argparse.ArgumentParser(
+        description="Stops the board capture, and sets the return address to the host's address"
+    )
     parser.add_argument(
         "--model",
         "-m",

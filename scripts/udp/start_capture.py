@@ -6,8 +6,13 @@ import sys
 from helpers import _is_ip_valid, _is_port_valid
 from naluconfigs import get_available_models
 from naludaq.board import Board
-from naludaq.controllers import get_board_controller, get_connection_controller, get_dac_controller, get_readout_controller, get_trigger_controller
-
+from naludaq.controllers import (
+    get_board_controller,
+    get_connection_controller,
+    get_dac_controller,
+    get_readout_controller,
+    get_trigger_controller,
+)
 
 
 def main():
@@ -31,28 +36,30 @@ def main():
     target_ip = (args.target_ip, int(args.target_port))
 
     if args.trigger_mode == "self" and not args.trigger_values:
-        raise ValueError("Trigger mode is self, please provide trigger values for channels")
+        raise ValueError(
+            "Trigger mode is self, please provide trigger values for channels"
+        )
 
-    atof = Board(board_model)
-    atof.get_udp_connection(board_ip, host_ip)
+    brd = Board(board_model)
+    brd.get_udp_connection(board_ip, host_ip)
 
     if args.trigger_values:
-        atof.trigger_values = args.trigger_values
-        get_trigger_controller(atof).write_triggers()
+        brd.trigger_values = args.trigger_values
+        get_trigger_controller(brd).write_triggers()
     if args.dac_values:
         for chan, val in enumerate(args.dac_values):
-            get_dac_controller(atof).set_single_dac(chan, val)
-    get_readout_controller(atof).set_read_window(*args.readout_window)
+            get_dac_controller(brd).set_single_dac(chan, val)
+    get_readout_controller(brd).set_read_window(*args.readout_window)
 
     # Set receiver address to the target computer's address
-    atof.connection_info["receiver_addr"] = target_ip
-    get_connection_controller(atof)._configure_ethernet()
+    brd.connection_info["receiver_addr"] = target_ip
+    get_connection_controller(brd)._configure_ethernet()
 
-    get_board_controller(atof).start_readout(
+    get_board_controller(brd).start_readout(
         trig=args.trigger_mode,
         lb=args.lookback_mode,
     )
-    atof.disconnect()
+    brd.disconnect()
 
 
 def setup_logger(level=logging.DEBUG):
@@ -137,7 +144,7 @@ def parse_args(argv):
         type=int,
         required=False,
         help="DAC values to set the board's channels to",
-        nargs='+',
+        nargs="+",
     )
     parser.add_argument(
         "--readout_window",
@@ -161,7 +168,7 @@ def parse_args(argv):
         type=int,
         required=False,
         help="Trigger values to set per channel in the format: val1 val2 val3 ...",
-        nargs='+',
+        nargs="+",
     )
     parser.add_argument(
         "--lookback_mode",
@@ -173,6 +180,7 @@ def parse_args(argv):
     )
 
     return parser.parse_args(argv)
+
 
 if __name__ == "__main__":
     main()
