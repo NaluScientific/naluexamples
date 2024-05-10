@@ -22,9 +22,9 @@ This script initializes a given board to a default state.
 
 **Optional Parameters**:
 
-- <b>config file (-cfg, --config_file)</b> the path to the config yaml if you plan on using a different startup configuration for your board
-- <b>clock file (-clk, --clock_file)</b> the path to the clock file if you plan on using a custom clock configuration
-- debug (-d, --debug) Flag to enable debug logging
+- **config file (-cfg, --config_file)** the path to the config yaml if you plan on using a different startup configuration for your board
+- **clock file (-clk, --clock_file)** the path to the clock file if you plan on using a custom clock configuration
+- **debug (-d, --debug)** Flag to enable debug logging
 
 
 ### Start Readout
@@ -35,7 +35,7 @@ This script will set the board's parameters for readout, set the Board to send d
 **Parameters**:
 
 - **model (-m, --model)**: model of your board
-- board IP (-b, --board_ip)**: the board's IP is set in the firmware file, contact us if you need a custom ip
+- **board IP (-b, --board_ip)**: the board's IP is set in the firmware file, contact us if you need a custom ip
 - **board port (-bp, --board_port)**: firmware default is 4660
 - **host IP (-host, --host_ip)**: the IP of the machine you are running the script on. If your machine has multiple network interfaces, be sure to set the IP to a network the board is able to communicate over.
 - **host port (-hp, --host_port)**: Make sure to use an unused port
