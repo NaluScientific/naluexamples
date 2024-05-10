@@ -63,8 +63,7 @@ This script will stop the Board's readout and set the Board to send data to the 
 </ul>
 
 ## Readout Details
-
-Explain how and what the different variables do.
+More details about the parameters that can be set in the start capture script.
 
 ### Readout Window
 Readout window composes of 3 parameters, num windows, lookback, and write after trigger.
