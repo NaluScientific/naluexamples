@@ -134,7 +134,9 @@ bin/configs/recents.cfg
 cov.xml
 coverage/
 
+# Cache and temp files
 .ruff_cache/
+.jupyter_ystore.db
 
 # Output artifacts
 */output/
