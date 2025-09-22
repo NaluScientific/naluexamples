@@ -133,3 +133,8 @@ ipython/
 bin/configs/recents.cfg
 cov.xml
 coverage/
+
+.ruff_cache/
+
+# Output artifacts
+*/output/
