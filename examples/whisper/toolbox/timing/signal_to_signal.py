@@ -120,9 +120,17 @@ def signal_to_signal_timings(
         thresholds_x = results["threshold_x"]
 
     if "trig2sig_filtered_events" in results and "trig2sig_channels_per_event" in results:
-        delta_n =  -1 if "trig2sig_delta_n" not in results.keys() else results["trig2sig_delta_n"] 
-        filtered_events = results["trig2sig_filtered_events"][delta_n > 0] if filter_sig_before_trig else results["trig2sig_filtered_events"]
-        channels_per_event = results["trig2sig_channels_per_event"][delta_n > 0] if filter_sig_before_trig else results["trig2sig_channels_per_event"]
+        filtered_events    = results["trig2sig_filtered_events"]
+        channels_per_event = results["trig2sig_channels_per_event"]
+
+        if filter_sig_before_trig and "trig2sig_delta_n" in results and "trig2sig_event_indices" in results:
+            delta_n      = results["trig2sig_delta_n"]
+            event_idx    = results["trig2sig_event_indices"]
+            bad_events   = set(np.asarray(event_idx)[np.asarray(delta_n) <= 0].tolist())
+            keep_mask    = np.array([int(e) not in bad_events for e in filtered_events[:, 0]])
+            filtered_events    = filtered_events[keep_mask]
+            channels_per_event = {k: v for k, v in channels_per_event.items()
+                                  if int(k) not in bad_events}
     else:
         filtered_events, channels_per_event = find_events_of_interest(data, results, thresholds_x)
 

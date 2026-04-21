@@ -106,17 +106,18 @@ def filter_noise(
 
     for event in analysis_data:
         try:
-            for freq in freqs:
-                if filter_type == "notch":
+            if filter_type == "notch":
+                for freq in freqs:
                     b, a = scipy.signal.iirnotch(freq, q_factor, f_s)
-                else:
-                    b, a = scipy.signal.butter(order, freq, fs=f_s)
-
-                # filtfilt on axis=-1 processes all channels at once
+                    event[:] = scipy.signal.filtfilt(b, a, event, axis=-1)
+            elif filter_type == "bandpass":
+                if len(freqs) < 2:
+                    raise ValueError("bandpass requires freqs=[low, high]")
+                b, a = scipy.signal.butter(order, freqs[:2], btype="band", fs=f_s)
                 event[:] = scipy.signal.filtfilt(b, a, event, axis=-1)
-
-                if filter_type != "notch":
-                    break
+            else:  # lowpass / butter
+                b, a = scipy.signal.butter(order, freqs[0], btype="low", fs=f_s)
+                event[:] = scipy.signal.filtfilt(b, a, event, axis=-1)
 
         except (KeyError, IndexError, TypeError, Exception) as e:
             print(e)

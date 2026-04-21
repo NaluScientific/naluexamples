@@ -216,6 +216,6 @@ def remove_spikes(data, results, k: float = 5.0, edge_scale: float=2.6, in_place
 
         except (KeyError, IndexError, TypeError) as e:
             print(e)
-    results["spike_filtered"] = data
+    results["spike_filtered"] = analysis_data
     return data
 
