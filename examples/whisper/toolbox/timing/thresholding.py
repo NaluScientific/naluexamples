@@ -25,10 +25,14 @@ def find_peaks(
     else:
         analysis_data = data if in_place else data.copy()
 
-    # swapaxes(0, 1) -> (channels, events, samples); nanmax/nanmin over samples axis
-    by_channel = analysis_data.swapaxes(0, 1)
-    channel_min_peaks = np.nanmin(by_channel, axis=2)
-    channel_max_peaks = np.nanmax(by_channel, axis=2)
+    # Loop over channels so peak memory stays at O(E*S) instead of O(C*E*S).
+    n_ch = analysis_data.shape[1]
+    channel_min_peaks = np.empty((n_ch, analysis_data.shape[0]), dtype=float)
+    channel_max_peaks = np.empty((n_ch, analysis_data.shape[0]), dtype=float)
+    for ch in range(n_ch):
+        ch_data = analysis_data[:, ch, :]          # (E, S) view
+        channel_min_peaks[ch] = np.fmin.reduce(ch_data, axis=1)
+        channel_max_peaks[ch] = np.fmax.reduce(ch_data, axis=1)
 
     results["channel_min_peaks"] = channel_min_peaks
     results["channel_max_peaks"] = channel_max_peaks
@@ -186,8 +190,6 @@ def find_threshold_x(
             f"data and thresholds must match shape; got {data.shape} vs {thresholds.shape}"
         )
 
-    diff = analysis_data - thresholds_2d[:, :, None]  # broadcasts over S, no (E,C,S) copy
-
     if isinstance(edge, str):
         edge_arr = np.full((c,), edge, dtype=object)
     else:
@@ -199,60 +201,59 @@ def find_threshold_x(
 
     edge_arr = np.char.lower(edge_arr.astype(str))
     is_falling = edge_arr == "falling"
-    is_rising = edge_arr == "rising"
+    is_rising  = edge_arr == "rising"
     if not np.all(is_falling | is_rising):
         bad = edge_arr[~(is_falling | is_rising)]
         raise ValueError(f'edge entries must be "falling" or "rising"; got {bad!r}')
 
-    waveform_min = np.nanmin(analysis_data, axis=2)
-    waveform_max = np.nanmax(analysis_data, axis=2)
-
-    amp_valid = np.ones((e, c), dtype=bool)
-
+    # Validate amplitude threshold shapes up front
+    ft_arr = rt_arr = None
     if falling_threshold is not None:
-        ft = np.asarray(falling_threshold, dtype=float)
-        if ft.ndim == 0:
-            pass
-        elif ft.shape == (c,):
-            ft = ft[None, :]
-        else:
+        ft_arr = np.asarray(falling_threshold, dtype=float)
+        if ft_arr.ndim not in (0,) and ft_arr.shape != (c,):
             raise ValueError("falling_threshold must be scalar or (channels,)")
-        amp_valid &= ~is_falling[None, :] | (waveform_min <= ft)
-
     if rising_threshold is not None:
-        rt = np.asarray(rising_threshold, dtype=float)
-        if rt.ndim == 0:
-            pass
-        elif rt.shape == (c,):
-            rt = rt[None, :]
-        else:
+        rt_arr = np.asarray(rising_threshold, dtype=float)
+        if rt_arr.ndim not in (0,) and rt_arr.shape != (c,):
             raise ValueError("rising_threshold must be scalar or (channels,)")
-        amp_valid &= ~is_rising[None, :] | (waveform_max >= rt)
-
-    crossed = np.where(is_falling[None, :, None], diff < 0, diff > 0)
-
-    any_cross = crossed.any(axis=2)
-    x2 = np.argmax(crossed, axis=2)
-    x1 = x2 - 1
-
-    valid = any_cross & (x2 > 0) & amp_valid
 
     threshold_x = np.full((e, c), np.nan, dtype=float)
-    if not np.any(valid):
-        return threshold_x
 
-    event_idx, chan_idx = np.meshgrid(np.arange(e), np.arange(c), indexing="ij")
+    # Process one channel at a time to keep peak memory at O(E*S) instead of O(E*C*S).
+    for ch in range(c):
+        ch_data = analysis_data[:, ch, :]          # (E, S) — view, no copy
+        th      = thresholds_2d[:, ch].astype(float)  # (E,)
 
-    y2 = data[event_idx, chan_idx, x2]
-    y1 = data[event_idx, chan_idx, x1]
-    t = thresholds_2d[event_idx, chan_idx]  # threshold is per (E, C), not per sample
+        diff    = ch_data.astype(float) - th[:, None]  # (E, S)
+        crossed = diff < 0 if is_falling[ch] else diff > 0  # (E, S) bool
 
-    denom = y2 - y1
-    valid2 = valid & np.isfinite(denom) & (denom != 0)
+        any_cross = crossed.any(axis=1)             # (E,)
+        x2        = np.argmax(crossed, axis=1)      # (E,)
+        x1        = np.maximum(x2 - 1, 0)
 
-    threshold_x[valid2] = (t[valid2] - y1[valid2]) * (x2[valid2] - x1[valid2]) / denom[
-        valid2
-    ] + x1[valid2]
+        amp_ok = np.ones(e, dtype=bool)
+        if is_falling[ch] and ft_arr is not None:
+            ft_ch  = float(ft_arr) if ft_arr.ndim == 0 else float(ft_arr[ch])
+            amp_ok = np.fmin.reduce(ch_data, axis=1) <= ft_ch
+        if is_rising[ch] and rt_arr is not None:
+            rt_ch  = float(rt_arr) if rt_arr.ndim == 0 else float(rt_arr[ch])
+            amp_ok = np.fmax.reduce(ch_data, axis=1) >= rt_ch
+
+        valid  = any_cross & (x2 > 0) & amp_ok
+        ev_ok  = np.where(valid)[0]
+        if ev_ok.size == 0:
+            continue
+
+        y2    = ch_data[ev_ok, x2[ev_ok]].astype(float)
+        y1    = ch_data[ev_ok, x1[ev_ok]].astype(float)
+        t_val = th[ev_ok]
+        denom = y2 - y1
+        ok    = np.isfinite(denom) & (denom != 0)
+
+        threshold_x[ev_ok[ok], ch] = (
+            (t_val[ok] - y1[ok]) * (x2[ev_ok[ok]] - x1[ev_ok[ok]]) / denom[ok]
+            + x1[ev_ok[ok]]
+        )
 
     results["threshold_x"] = threshold_x
     return threshold_x

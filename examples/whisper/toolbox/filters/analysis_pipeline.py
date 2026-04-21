@@ -21,7 +21,8 @@ class MmapDict(dict):
 
     def __init__(self, tmpdir=None):
         super().__init__()
-        self._tmpdir = tmpdir or tempfile.mkdtemp()
+        self._tmpdir = tmpdir or str(Path.cwd() / "tmp")
+        os.makedirs(self._tmpdir, exist_ok=True)
         self._paths = {}
 
     def __setitem__(self, key, value):

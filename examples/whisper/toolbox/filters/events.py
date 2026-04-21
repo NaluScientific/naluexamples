@@ -86,15 +86,35 @@ def separate_signal_and_noise(
         analysis_data = results[source_key] if in_place else results[source_key].copy()
     else:
         analysis_data = data if in_place else data.copy()
-    signal_mask =  np.any((analysis_data[:, :7, :]>signal_threshold) & np.isfinite(analysis_data[:, :7, :]), axis=-1) if is_sig_rising_edge else np.any((analysis_data[:, :7, :] < signal_threshold) & np.isfinite(analysis_data[:, :7, :]), axis=-1)
-    noise_mask = ~signal_mask & np.all(np.isfinite(analysis_data[:, :7, :]), axis=-1)
-    signal_events, signal_channels = np.where(signal_mask)
-    noise_events, noise_channels = np.where(noise_mask)
+    n_sig_ch = 7
+    n_events = analysis_data.shape[0]
 
-    trig_signal_mask =  np.any((analysis_data[:, 7:, :]>trig_threshold) & np.isfinite(analysis_data[:, 7:, :]), axis=-1) if is_trig_rising_edge else np.any((analysis_data[:, 7:, :] < trig_threshold) & np.isfinite(analysis_data[:, 7:, :]), axis=-1)
-    trig_noise_mask = ~trig_signal_mask & np.all(np.isfinite(analysis_data[:, 7:, :]), axis=-1)
+    # Compute masks channel-by-channel to avoid materialising (N, C, S) boolean arrays.
+    signal_mask = np.zeros((n_events, n_sig_ch), dtype=bool)
+    all_finite_sig = np.ones((n_events, n_sig_ch), dtype=bool)
+    for ch in range(n_sig_ch):
+        col = analysis_data[:, ch, :]                       # (N, S) view
+        finite = np.isfinite(col)
+        all_finite_sig[:, ch] = finite.all(axis=1)
+        if is_sig_rising_edge:
+            signal_mask[:, ch] = (np.fmax.reduce(col, axis=1) > signal_threshold)
+        else:
+            signal_mask[:, ch] = (np.fmin.reduce(col, axis=1) < signal_threshold)
+
+    noise_mask = ~signal_mask & all_finite_sig
+    signal_events, signal_channels = np.where(signal_mask)
+    noise_events, noise_channels   = np.where(noise_mask)
+
+    trig_col = analysis_data[:, 7, :]                       # (N, S) view
+    trig_finite = np.isfinite(trig_col)
+    if is_trig_rising_edge:
+        trig_fired = np.fmax.reduce(trig_col, axis=1) > trig_threshold
+    else:
+        trig_fired = np.fmin.reduce(trig_col, axis=1) < trig_threshold
+    trig_signal_mask = trig_fired[:, None]
+    trig_noise_mask  = (~trig_fired & trig_finite.all(axis=1))[:, None]
     trig_signal_events, trig_signal_channels = np.where(trig_signal_mask)
-    trig_noise_events, trig_noise_channels = np.where(trig_noise_mask)
+    trig_noise_events,  trig_noise_channels  = np.where(trig_noise_mask)
     results["signal_events"] =        signal_events
     results["signal_channels"] =      signal_channels
     results["noise_events"] =         noise_events
