@@ -169,26 +169,24 @@ def find_threshold_x(
     else:
         analysis_data = data if in_place else data.copy()
 
+    e, c, s = analysis_data.shape
     thresholds = np.asarray(thresholds)
 
-    # Auto-load from results["thresholds"] when not provided; reshape (channels, events) ->
-    # (events, channels, samples) to match analysis_data
+    # Auto-load and keep as (E, C) — broadcast over samples to avoid (E, C, S) allocation.
     if not thresholds.size:
         if "thresholds" not in results:
             raise ValueError(
                 "thresholds not provided and 'thresholds' not found in results"
             )
-        raw = results["thresholds"]  # (channels, events)
-        e, c, s = analysis_data.shape
-        thresholds = np.repeat(raw.T[:, :, None], s, axis=2)  # (events, channels, samples)
-
-    if analysis_data.shape != thresholds.shape:
+        thresholds_2d = results["thresholds"].T  # (E, C)
+    elif thresholds.shape == (e, c, s):
+        thresholds_2d = thresholds[:, :, 0]      # threshold is constant per (E, C)
+    else:
         raise ValueError(
             f"data and thresholds must match shape; got {data.shape} vs {thresholds.shape}"
         )
 
-    e, c, s = analysis_data.shape
-    diff = analysis_data - thresholds
+    diff = analysis_data - thresholds_2d[:, :, None]  # broadcasts over S, no (E,C,S) copy
 
     if isinstance(edge, str):
         edge_arr = np.full((c,), edge, dtype=object)
@@ -247,7 +245,7 @@ def find_threshold_x(
 
     y2 = data[event_idx, chan_idx, x2]
     y1 = data[event_idx, chan_idx, x1]
-    t = thresholds[event_idx, chan_idx, x2]
+    t = thresholds_2d[event_idx, chan_idx]  # threshold is per (E, C), not per sample
 
     denom = y2 - y1
     valid2 = valid & np.isfinite(denom) & (denom != 0)

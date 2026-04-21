@@ -24,39 +24,28 @@ def find_baseline_samples(
     if step < 1:
         raise ValueError(f"step must be >= 1, got {step}")
 
-    windows_full = sliding_window_view(data, window_shape=window_len, axis=2)
-    windows = windows_full[:, :, ::step, :] 
+    n_windows = (n_samples - window_len) // step + 1
 
-    valid_mask = ~np.isnan(windows)
-    valid_count = valid_mask.sum(axis=3)  
+    var_x = np.full((n_events, n_channels, n_windows), np.inf)
+    for w in range(n_windows):
+        start = w * step
+        win = data[:, :, start:start + window_len]
+        valid_count = np.sum(~np.isnan(win), axis=2)
+        full = valid_count >= window_len
+        v = np.nanvar(win.astype(np.float64, copy=False), axis=2)
+        var_x[:, :, w] = np.where(full, v, np.inf)
 
-    window_is_valid = valid_count >= window_len
+    has_any_valid = np.isfinite(var_x).any(axis=2)
+    best_win_idx  = np.argmin(var_x, axis=2)
+    best_start    = best_win_idx * step
 
-    windows_filled = np.where(valid_mask, windows, 0.0).astype(np.float64, copy=False)
-
-    sum_x = windows_filled.sum(axis=3)
-    denom = np.maximum(valid_count, 1)
-    mean_x = sum_x / denom
-
-    sum_x2 = np.square(windows_filled).sum(axis=3)
-    mean_x2 = sum_x2 / denom
-
-    var_x = mean_x2 - np.square(mean_x)
-    var_x = np.where(window_is_valid, var_x, np.inf)
-
-    has_any_valid = np.isfinite(var_x).any(axis=2)  
-    best_win_idx = np.argmin(var_x, axis=2)
-    best_start = best_win_idx * step
-
-    masked = np.full_like(data, np.nan)
-
-    for event_idx in range(n_events):
-        for channel_idx in range(n_channels):
-            if not has_any_valid[event_idx, channel_idx]:
-                continue
-            start_idx = int(best_start[event_idx, channel_idx])
-            end_idx = start_idx + window_len
-            masked[event_idx, channel_idx, start_idx:end_idx] = data[event_idx, channel_idx, start_idx:end_idx]
+    s = np.arange(n_samples)
+    in_window = (
+        (s[None, None, :] >= best_start[:, :, None]) &
+        (s[None, None, :] <  best_start[:, :, None] + window_len) &
+        has_any_valid[:, :, None]
+    )
+    masked = np.where(in_window, data, np.nan)
 
     return masked, best_start
 
@@ -176,39 +165,28 @@ class Baseline():
             if step < 1:
                 raise ValueError(f"step must be >= 1, got {step}")
 
-            windows_full = sliding_window_view(data, window_shape=window_len, axis=2)
-            windows = windows_full[:, :, ::step, :] 
+            n_windows = (n_samples - window_len) // step + 1
 
-            valid_mask = ~np.isnan(windows)
-            valid_count = valid_mask.sum(axis=3)  
+            var_x = np.full((n_events, n_channels, n_windows), np.inf)
+            for w in range(n_windows):
+                start = w * step
+                win = data[:, :, start:start + window_len]
+                valid_count = np.sum(~np.isnan(win), axis=2)
+                full = valid_count >= window_len
+                v = np.nanvar(win.astype(np.float64, copy=False), axis=2)
+                var_x[:, :, w] = np.where(full, v, np.inf)
 
-            window_is_valid = valid_count >= window_len
+            has_any_valid = np.isfinite(var_x).any(axis=2)
+            best_win_idx  = np.argmin(var_x, axis=2)
+            best_start    = best_win_idx * step
 
-            windows_filled = np.where(valid_mask, windows, 0.0).astype(np.float64, copy=False)
-
-            sum_x = windows_filled.sum(axis=3)
-            denom = np.maximum(valid_count, 1)
-            mean_x = sum_x / denom
-
-            sum_x2 = np.square(windows_filled).sum(axis=3)
-            mean_x2 = sum_x2 / denom
-
-            var_x = mean_x2 - np.square(mean_x)
-            var_x = np.where(window_is_valid, var_x, np.inf)
-
-            has_any_valid = np.isfinite(var_x).any(axis=2)  
-            best_win_idx = np.argmin(var_x, axis=2)
-            best_start = best_win_idx * step
-
-            masked = np.full_like(data, np.nan)
-
-            for event_idx in range(n_events):
-                for channel_idx in range(n_channels):
-                    if not has_any_valid[event_idx, channel_idx]:
-                        continue
-                    start_idx = int(best_start[event_idx, channel_idx])
-                    end_idx = start_idx + window_len
-                    masked[event_idx, channel_idx, start_idx:end_idx] = data[event_idx, channel_idx, start_idx:end_idx]
+            s = np.arange(n_samples)
+            in_window = (
+                (s[None, None, :] >= best_start[:, :, None]) &
+                (s[None, None, :] <  best_start[:, :, None] + window_len) &
+                has_any_valid[:, :, None]
+            )
+            masked = np.where(in_window, data, np.nan)
 
             return masked, best_start
     
@@ -315,9 +293,9 @@ def find_baseline_samples(data, results, method, axis=1, window_len=64, sliding_
     else:
         return np.array([0])
 
-def __sliding_window(data: np.ndarray,  window_len: int, step: int = 1) -> (np.ndarray, np.ndarray):
+def __sliding_window(data: np.ndarray, window_len: int, step: int = 1) -> (np.ndarray, np.ndarray):
     """
-    Uses a sliding window of length window_len to calculate the variance for each window in 
+    Uses a sliding window of length window_len to calculate the variance for each window in
     channel data and determine which window has the lowest variance. Masks out all values
     outside the chosen window with np.nan.
 
@@ -328,9 +306,9 @@ def __sliding_window(data: np.ndarray,  window_len: int, step: int = 1) -> (np.n
         which windows are used to calcualte the baseline. Defaults to 1.
 
     Raises:
-        ValueError: The number of samples must be greater than or equal to the the length of 
-        the sliding window and the length of the sliding window must be at least one. 
-        ValueError: The step size must be at least 1. 
+        ValueError: The number of samples must be greater than or equal to the the length of
+        the sliding window and the length of the sliding window must be at least one.
+        ValueError: The step size must be at least 1.
 
     Returns:
         np.ndarray: An array with dimensions (EVENTS, CHANNELS, SAMPLES) with any samples outside
@@ -345,42 +323,34 @@ def __sliding_window(data: np.ndarray,  window_len: int, step: int = 1) -> (np.n
     if step < 1:
         raise ValueError(f"step must be >= 1, got {step}")
 
-    windows_full = sliding_window_view(data, window_shape=window_len, axis=2)
-    windows = windows_full[:, :, ::step, :] 
+    n_windows = (n_samples - window_len) // step + 1
 
-    valid_mask = ~np.isnan(windows)
-    valid_count = valid_mask.sum(axis=3)  
+    # Iterate over window positions to avoid materialising an (N, C, W, S) array.
+    # Each iteration keeps at most O(N·C·S) live memory instead of O(N·C·W·S).
+    var_x = np.full((n_events, n_channels, n_windows), np.inf)
+    for w in range(n_windows):
+        start = w * step
+        win = data[:, :, start:start + window_len]              # view, no copy
+        valid_count = np.sum(~np.isnan(win), axis=2)            # (N, C)
+        full = valid_count >= window_len
+        v = np.nanvar(win.astype(np.float64, copy=False), axis=2)
+        var_x[:, :, w] = np.where(full, v, np.inf)
 
-    window_is_valid = valid_count >= window_len
+    has_any_valid = np.isfinite(var_x).any(axis=2)              # (N, C)
+    best_win_idx  = np.argmin(var_x, axis=2)                   # (N, C)
+    best_start    = best_win_idx * step                         # (N, C)
 
-    windows_filled = np.where(valid_mask, windows, 0.0).astype(np.float64, copy=False)
-
-    sum_x = windows_filled.sum(axis=3)
-    denom = np.maximum(valid_count, 1)
-    mean_x = sum_x / denom
-
-    sum_x2 = np.square(windows_filled).sum(axis=3)
-    mean_x2 = sum_x2 / denom
-
-    var_x = mean_x2 - np.square(mean_x)
-    var_x = np.where(window_is_valid, var_x, np.inf)
-
-    has_any_valid = np.isfinite(var_x).any(axis=2)  
-    best_win_idx = np.argmin(var_x, axis=2)
-    best_start = best_win_idx * step
-
-    masked = np.full_like(data, np.nan)
-
-    for event_idx in range(n_events):
-        for channel_idx in range(n_channels):
-            if not has_any_valid[event_idx, channel_idx]:
-                continue
-            start_idx = int(best_start[event_idx, channel_idx])
-            end_idx = start_idx + window_len
-            masked[event_idx, channel_idx, start_idx:end_idx] = data[event_idx, channel_idx, start_idx:end_idx]
+    # Vectorised masking: build in-window boolean mask (N, C, S)
+    s = np.arange(n_samples)
+    in_window = (
+        (s[None, None, :] >= best_start[:, :, None]) &
+        (s[None, None, :] <  best_start[:, :, None] + window_len) &
+        has_any_valid[:, :, None]
+    )
+    masked = np.where(in_window, data, np.nan)
 
     return masked, best_start
-    
+
 def __fixed_window(data: np.ndarray, window_length: int) -> (np.ndarray, np.ndarray):
     """
     Uses a non-sliding fixed window length to divide the samples in channel data. Recommended to set to 

@@ -255,7 +255,7 @@ class AnalysisPipeline:
         (they are much smaller than the waveform data).
         """
         if tmpdir is None:
-            tmpdir = tempfile.mkdtemp()
+            tmpdir = Path.cwd() / "tmp"
         os.makedirs(tmpdir, exist_ok=True)
 
         N = data.shape[0]
